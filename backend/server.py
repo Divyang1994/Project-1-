@@ -89,6 +89,12 @@ class Product(BaseModel):
     tax_rate: float
     created_at: datetime
 
+class DeliveryRecord(BaseModel):
+    delivery_date: str
+    quantity_received: float
+    received_by: str
+    notes: Optional[str] = ""
+
 class POItemCreate(BaseModel):
     product_id: str
     product_name: str
@@ -102,10 +108,12 @@ class POItem(BaseModel):
     product_id: str
     product_name: str
     quantity: float
+    quantity_received: float = 0.0
     unit_price: float
     tax_rate: float
     tax_amount: float
     total: float
+    delivery_history: List[DeliveryRecord] = []
 
 class PurchaseOrderCreate(BaseModel):
     vendor_id: str
@@ -136,8 +144,6 @@ class PurchaseOrder(BaseModel):
     tax: float
     total: float
     status: str
-    material_received: bool = False
-    material_received_date: Optional[str] = None
     created_by: str
     created_at: datetime
 
