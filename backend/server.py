@@ -258,10 +258,14 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 # Vendor endpoints
 @api_router.get("/vendors", response_model=List[Vendor])
 async def get_vendors(current_user: dict = Depends(get_current_user)):
-    vendors = await db.vendors.find({}, {'_id': 0}).to_list(1000)
+    # Admin can see all vendors, others see only their department
+    query = {} if current_user.get('role') == 'admin' else {'department': current_user.get('department', 'general')}
+    vendors = await db.vendors.find(query, {'_id': 0}).to_list(1000)
     for vendor in vendors:
         if isinstance(vendor.get('created_at'), str):
             vendor['created_at'] = datetime.fromisoformat(vendor['created_at'])
+        if 'department' not in vendor:
+            vendor['department'] = 'general'
     return vendors
 
 @api_router.post("/vendors", response_model=Vendor)
@@ -270,6 +274,7 @@ async def create_vendor(vendor_data: VendorCreate, current_user: dict = Depends(
     vendor_doc = {
         'id': vendor_id,
         **vendor_data.model_dump(),
+        'department': current_user.get('department', 'general'),
         'created_at': datetime.now(timezone.utc).isoformat()
     }
     await db.vendors.insert_one(vendor_doc)
@@ -278,6 +283,14 @@ async def create_vendor(vendor_data: VendorCreate, current_user: dict = Depends(
 
 @api_router.put("/vendors/{vendor_id}", response_model=Vendor)
 async def update_vendor(vendor_id: str, vendor_data: VendorCreate, current_user: dict = Depends(get_current_user)):
+    # Check access
+    existing = await db.vendors.find_one({'id': vendor_id}, {'_id': 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    
+    if current_user.get('role') != 'admin' and existing.get('department') != current_user.get('department'):
+        raise HTTPException(status_code=403, detail="Access denied to this vendor")
+    
     result = await db.vendors.update_one(
         {'id': vendor_id},
         {'$set': vendor_data.model_dump()}
@@ -288,10 +301,20 @@ async def update_vendor(vendor_id: str, vendor_data: VendorCreate, current_user:
     vendor = await db.vendors.find_one({'id': vendor_id}, {'_id': 0})
     if isinstance(vendor['created_at'], str):
         vendor['created_at'] = datetime.fromisoformat(vendor['created_at'])
+    if 'department' not in vendor:
+        vendor['department'] = 'general'
     return vendor
 
 @api_router.delete("/vendors/{vendor_id}")
 async def delete_vendor(vendor_id: str, current_user: dict = Depends(get_current_user)):
+    # Check access
+    existing = await db.vendors.find_one({'id': vendor_id}, {'_id': 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    
+    if current_user.get('role') != 'admin' and existing.get('department') != current_user.get('department'):
+        raise HTTPException(status_code=403, detail="Access denied to this vendor")
+    
     result = await db.vendors.delete_one({'id': vendor_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Vendor not found")
