@@ -247,6 +247,12 @@ export default function PODetailPage() {
                   Unit Price
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Tax Rate
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Tax Amount
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Total
                 </th>
               </tr>
@@ -257,9 +263,11 @@ export default function PODetailPage() {
                   <td className="px-6 py-4 text-sm">{index + 1}</td>
                   <td className="px-6 py-4 text-sm">{item.product_name}</td>
                   <td className="px-6 py-4 text-sm text-right font-mono">{item.quantity}</td>
-                  <td className="px-6 py-4 text-sm text-right font-mono">${item.unit_price.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-sm text-right font-mono">₹{item.unit_price.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-sm text-right font-mono">{item.tax_rate}%</td>
+                  <td className="px-6 py-4 text-sm text-right font-mono">₹{item.tax_amount.toFixed(2)}</td>
                   <td className="px-6 py-4 text-sm text-right font-mono font-medium">
-                    ${item.total.toFixed(2)}
+                    ₹{item.total.toFixed(2)}
                   </td>
                 </tr>
               ))}
@@ -271,16 +279,16 @@ export default function PODetailPage() {
             <div className="w-full max-w-xs space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-mono" data-testid="subtotal">${po.subtotal.toFixed(2)}</span>
+                <span className="font-mono" data-testid="subtotal">₹{po.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax</span>
-                <span className="font-mono" data-testid="tax">${po.tax.toFixed(2)}</span>
+                <span className="text-muted-foreground">Tax (GST)</span>
+                <span className="font-mono" data-testid="tax">₹{po.tax.toFixed(2)}</span>
               </div>
               <div className="h-px bg-border" />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
-                <span className="font-mono text-primary" data-testid="total">${po.total.toFixed(2)}</span>
+                <span className="font-mono text-primary" data-testid="total">₹{po.total.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -288,9 +296,16 @@ export default function PODetailPage() {
       </div>
 
       {po.notes && (
-        <div className="bg-card border border-border rounded-sm p-6">
+        <div className="bg-card border border-border rounded-sm p-6 mb-6">
           <h2 className="font-heading font-semibold text-xl mb-4">Notes</h2>
           <p className="text-sm whitespace-pre-wrap" data-testid="notes">{po.notes}</p>
+        </div>
+      )}
+
+      {po.authorized_signatory && (
+        <div className="bg-card border border-border rounded-sm p-6">
+          <h2 className="font-heading font-semibold text-xl mb-4">Authorized Signatory</h2>
+          <p className="text-sm font-medium" data-testid="authorized-signatory">{po.authorized_signatory}</p>
         </div>
       )}
     </div>
