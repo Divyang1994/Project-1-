@@ -82,6 +82,15 @@ export const Layout = ({ user, onLogout }) => {
         </nav>
 
         <div className="p-4 border-t border-border">
+          <div className="px-4 py-2 mb-3 bg-muted/50 rounded-sm">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Department</p>
+            <p className="text-sm font-bold text-primary capitalize">{user?.department || 'General'}</p>
+            {user?.role === 'admin' && (
+              <span className="inline-block mt-1 px-2 py-0.5 text-xs font-bold bg-primary/10 text-primary rounded-full">
+                Admin Access
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3 px-4 py-2 mb-2">
             <div className="w-8 h-8 rounded-sm bg-primary text-primary-foreground flex items-center justify-center font-heading font-bold">
               {user?.full_name?.charAt(0).toUpperCase() || 'U'}
