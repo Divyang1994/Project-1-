@@ -287,7 +287,7 @@ export default function CreatePurchaseOrder() {
                   {formData.items.map((item, index) => (
                     <div key={index} className="border border-border rounded-sm p-4" data-testid={`item-${index}`}>
                       <div className="grid grid-cols-12 gap-4 items-end">
-                        <div className="col-span-12 md:col-span-5">
+                        <div className="col-span-12 md:col-span-4">
                           <label className="block text-xs font-medium mb-1">Product</label>
                           <select
                             value={item.product_id}
@@ -299,12 +299,12 @@ export default function CreatePurchaseOrder() {
                             <option value="">Select product</option>
                             {products.map((product) => (
                               <option key={product.id} value={product.id}>
-                                {product.name} - ${product.unit_price}
+                                {product.name} - ₹{product.unit_price} ({product.tax_rate}% tax)
                               </option>
                             ))}
                           </select>
                         </div>
-                        <div className="col-span-12 md:col-span-2">
+                        <div className="col-span-4 md:col-span-2">
                           <label className="block text-xs font-medium mb-1">Quantity</label>
                           <input
                             type="number"
@@ -317,7 +317,7 @@ export default function CreatePurchaseOrder() {
                             className="w-full px-3 py-2 text-sm bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
                           />
                         </div>
-                        <div className="col-span-12 md:col-span-2">
+                        <div className="col-span-4 md:col-span-2">
                           <label className="block text-xs font-medium mb-1">Unit Price</label>
                           <input
                             type="number"
@@ -330,17 +330,31 @@ export default function CreatePurchaseOrder() {
                             className="w-full px-3 py-2 text-sm bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
                           />
                         </div>
-                        <div className="col-span-10 md:col-span-2">
+                        <div className="col-span-4 md:col-span-1">
+                          <label className="block text-xs font-medium mb-1">Tax %</label>
+                          <input
+                            type="number"
+                            value={item.tax_rate}
+                            onChange={(e) => updateItem(index, "tax_rate", e.target.value)}
+                            data-testid={`tax-rate-input-${index}`}
+                            required
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            className="w-full px-3 py-2 text-sm bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="col-span-7 md:col-span-2">
                           <label className="block text-xs font-medium mb-1">Total</label>
                           <input
                             type="text"
-                            value={`$${item.total.toFixed(2)}`}
+                            value={`₹${item.total.toFixed(2)}`}
                             readOnly
                             data-testid={`item-total-${index}`}
                             className="w-full px-3 py-2 text-sm bg-muted border border-input rounded-sm font-mono"
                           />
                         </div>
-                        <div className="col-span-2 md:col-span-1">
+                        <div className="col-span-5 md:col-span-1">
                           <button
                             type="button"
                             onClick={() => removeItem(index)}
@@ -358,15 +372,29 @@ export default function CreatePurchaseOrder() {
             </div>
 
             <div className="bg-card border border-border rounded-sm p-6">
-              <h2 className="font-heading font-semibold text-xl mb-4">Additional Notes</h2>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                data-testid="notes-textarea"
-                rows={4}
-                className="w-full px-4 py-3 bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                placeholder="Add any additional notes or instructions..."
-              />
+              <h2 className="font-heading font-semibold text-xl mb-4">Additional Information</h2>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Authorized Signatory</label>
+                <input
+                  type="text"
+                  value={formData.authorized_signatory}
+                  onChange={(e) => setFormData({ ...formData, authorized_signatory: e.target.value })}
+                  data-testid="authorized-signatory-input"
+                  className="w-full px-4 py-2.5 bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="Enter name of authorized person"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Additional Notes</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  data-testid="notes-textarea"
+                  rows={4}
+                  className="w-full px-4 py-3 bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  placeholder="Add any additional notes or instructions..."
+                />
+              </div>
             </div>
           </div>
 
@@ -378,20 +406,20 @@ export default function CreatePurchaseOrder() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Subtotal</span>
                   <span className="font-mono font-medium" data-testid="subtotal-display">
-                    ${formData.subtotal.toFixed(2)}
+                    ₹{formData.subtotal.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Tax (10%)</span>
+                  <span className="text-sm text-muted-foreground">Tax (GST)</span>
                   <span className="font-mono font-medium" data-testid="tax-display">
-                    ${formData.tax.toFixed(2)}
+                    ₹{formData.tax.toFixed(2)}
                   </span>
                 </div>
                 <div className="h-px bg-border" />
                 <div className="flex justify-between items-center">
                   <span className="font-heading font-semibold text-lg">Total</span>
                   <span className="font-mono font-bold text-2xl text-primary" data-testid="total-display">
-                    ${formData.total.toFixed(2)}
+                    ₹{formData.total.toFixed(2)}
                   </span>
                 </div>
               </div>
