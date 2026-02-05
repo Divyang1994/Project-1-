@@ -323,10 +323,13 @@ async def delete_vendor(vendor_id: str, current_user: dict = Depends(get_current
 # Product endpoints
 @api_router.get("/products", response_model=List[Product])
 async def get_products(current_user: dict = Depends(get_current_user)):
-    products = await db.products.find({}, {'_id': 0}).to_list(1000)
+    query = {} if current_user.get('role') == 'admin' else {'department': current_user.get('department', 'general')}
+    products = await db.products.find(query, {'_id': 0}).to_list(1000)
     for product in products:
         if isinstance(product.get('created_at'), str):
             product['created_at'] = datetime.fromisoformat(product['created_at'])
+        if 'department' not in product:
+            product['department'] = 'general'
     return products
 
 @api_router.post("/products", response_model=Product)
@@ -335,6 +338,7 @@ async def create_product(product_data: ProductCreate, current_user: dict = Depen
     product_doc = {
         'id': product_id,
         **product_data.model_dump(),
+        'department': current_user.get('department', 'general'),
         'created_at': datetime.now(timezone.utc).isoformat()
     }
     await db.products.insert_one(product_doc)
@@ -343,6 +347,13 @@ async def create_product(product_data: ProductCreate, current_user: dict = Depen
 
 @api_router.put("/products/{product_id}", response_model=Product)
 async def update_product(product_id: str, product_data: ProductCreate, current_user: dict = Depends(get_current_user)):
+    existing = await db.products.find_one({'id': product_id}, {'_id': 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    if current_user.get('role') != 'admin' and existing.get('department') != current_user.get('department'):
+        raise HTTPException(status_code=403, detail="Access denied to this product")
+    
     result = await db.products.update_one(
         {'id': product_id},
         {'$set': product_data.model_dump()}
@@ -353,10 +364,19 @@ async def update_product(product_id: str, product_data: ProductCreate, current_u
     product = await db.products.find_one({'id': product_id}, {'_id': 0})
     if isinstance(product['created_at'], str):
         product['created_at'] = datetime.fromisoformat(product['created_at'])
+    if 'department' not in product:
+        product['department'] = 'general'
     return product
 
 @api_router.delete("/products/{product_id}")
 async def delete_product(product_id: str, current_user: dict = Depends(get_current_user)):
+    existing = await db.products.find_one({'id': product_id}, {'_id': 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    if current_user.get('role') != 'admin' and existing.get('department') != current_user.get('department'):
+        raise HTTPException(status_code=403, detail="Access denied to this product")
+    
     result = await db.products.delete_one({'id': product_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Product not found")
