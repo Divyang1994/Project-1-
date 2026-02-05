@@ -41,6 +41,8 @@ class UserCreate(BaseModel):
     username: str
     password: str
     full_name: str
+    role: str = "user"
+    department: str
 
 class UserLogin(BaseModel):
     username: str
@@ -51,6 +53,8 @@ class User(BaseModel):
     id: str
     username: str
     full_name: str
+    role: str
+    department: str
     created_at: datetime
 
 class VendorCreate(BaseModel):
@@ -68,6 +72,7 @@ class Vendor(BaseModel):
     email: str
     phone: str
     address: str
+    department: str
     created_at: datetime
 
 class ProductCreate(BaseModel):
@@ -87,6 +92,7 @@ class Product(BaseModel):
     unit_price: float
     unit_of_measure: str
     tax_rate: float
+    department: str
     created_at: datetime
 
 class DeliveryRecord(BaseModel):
@@ -144,6 +150,7 @@ class PurchaseOrder(BaseModel):
     tax: float
     total: float
     status: str
+    department: str
     created_by: str
     created_at: datetime
 
