@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import axios from "axios";
-import { Download, Edit, ArrowLeft, Trash2 } from "lucide-react";
+import { Download, Edit, ArrowLeft, Trash2, Package } from "lucide-react";
+import { ItemReceiptModal } from "../components/ItemReceiptModal";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -12,6 +13,9 @@ export default function PODetailPage() {
   const [po, setPO] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItemIndex, setSelectedItemIndex] = useState(null);
 
   useEffect(() => {
     fetchPO();
@@ -49,22 +53,30 @@ export default function PODetailPage() {
     }
   };
 
-  const confirmMaterialReceipt = async () => {
-    if (!window.confirm('Confirm that materials have been received in-house?')) return;
-
+  const confirmMaterialReceipt = async (receiptData) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
-        `${API}/purchase-orders/${id}/confirm-receipt`,
-        {},
+      const response = await axios.post(
+        `${API}/purchase-orders/${id}/confirm-item-receipt`,
+        receiptData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      alert('Material receipt confirmed successfully!');
+      
+      alert(`✓ Receipt confirmed! ${response.data.message}\nReceived: ${response.data.quantity_received}\nPending: ${response.data.pending}`);
+      setShowReceiptModal(false);
+      setSelectedItem(null);
+      setSelectedItemIndex(null);
       fetchPO();
     } catch (err) {
       console.error("Failed to confirm material receipt:", err);
-      alert("Failed to confirm material receipt");
+      alert(err.response?.data?.detail || "Failed to confirm material receipt");
     }
+  };
+
+  const openReceiptModal = (item, index) => {
+    setSelectedItem(item);
+    setSelectedItemIndex(index);
+    setShowReceiptModal(true);
   };
 
   const downloadPDF = async () => {
@@ -244,31 +256,33 @@ export default function PODetailPage() {
           
           <div className="pt-4 border-t border-border">
             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-              Material Receipt
+              Receipt Summary
             </h4>
-            {po.material_received ? (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-sm">
-                <p className="text-sm text-green-800 font-medium mb-1">✓ Material Received</p>
-                <p className="text-xs text-green-600">
-                  {new Date(po.material_received_date).toLocaleDateString()}
-                </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Items:</span>
+                <span className="font-mono font-medium">{po.items.length}</span>
               </div>
-            ) : (
-              <button
-                onClick={confirmMaterialReceipt}
-                data-testid="confirm-material-receipt-button"
-                className="w-full px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-sm hover:bg-green-700"
-              >
-                Confirm Material Receipt
-              </button>
-            )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Fully Received:</span>
+                <span className="font-mono font-medium text-green-600">
+                  {po.items.filter(item => (item.quantity_received || 0) >= item.quantity).length}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Pending:</span>
+                <span className="font-mono font-medium text-orange-600">
+                  {po.items.filter(item => (item.quantity_received || 0) < item.quantity).length}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="bg-card border border-border rounded-sm mb-6">
         <div className="px-6 py-4 border-b border-border">
-          <h2 className="font-heading font-semibold text-xl">Line Items</h2>
+          <h2 className="font-heading font-semibold text-xl">Line Items & Material Receipt Status</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full" data-testid="items-table">
@@ -281,7 +295,13 @@ export default function PODetailPage() {
                   Product
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Quantity
+                  Ordered
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Received
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Pending
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Unit Price
@@ -290,27 +310,58 @@ export default function PODetailPage() {
                   Tax Rate
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Tax Amount
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Total
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Action
                 </th>
               </tr>
             </thead>
             <tbody>
-              {po.items.map((item, index) => (
-                <tr key={index} className="border-b border-border" data-testid={`item-row-${index}`}>
-                  <td className="px-6 py-4 text-sm">{index + 1}</td>
-                  <td className="px-6 py-4 text-sm">{item.product_name}</td>
-                  <td className="px-6 py-4 text-sm text-right font-mono">{item.quantity}</td>
-                  <td className="px-6 py-4 text-sm text-right font-mono">₹{item.unit_price.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-sm text-right font-mono">{item.tax_rate}%</td>
-                  <td className="px-6 py-4 text-sm text-right font-mono">₹{item.tax_amount.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-sm text-right font-mono font-medium">
-                    ₹{item.total.toFixed(2)}
-                  </td>
-                </tr>
-              ))}
+              {po.items.map((item, index) => {
+                const quantityReceived = item.quantity_received || 0;
+                const pendingQty = item.quantity - quantityReceived;
+                const isFullyReceived = pendingQty <= 0;
+                
+                return (
+                  <tr key={index} className="border-b border-border" data-testid={`item-row-${index}`}>
+                    <td className="px-6 py-4 text-sm">{index + 1}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{item.product_name}</span>
+                        {isFullyReceived && (
+                          <span className="px-2 py-0.5 text-xs font-bold bg-green-100 text-green-700 rounded-full">
+                            ✓ Complete
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-right font-mono">{item.quantity}</td>
+                    <td className="px-6 py-4 text-sm text-right font-mono font-bold text-green-600">
+                      {quantityReceived}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-right font-mono font-bold text-orange-600">
+                      {pendingQty}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-right font-mono">₹{item.unit_price.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-sm text-right font-mono">{item.tax_rate}%</td>
+                    <td className="px-6 py-4 text-sm text-right font-mono font-medium">
+                      ₹{item.total.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {!isFullyReceived && (
+                        <button
+                          onClick={() => openReceiptModal(item, index)}
+                          data-testid={`receive-item-${index}`}
+                          className="px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded-sm hover:bg-primary/90"
+                        >
+                          Receive
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -347,6 +398,20 @@ export default function PODetailPage() {
           <h2 className="font-heading font-semibold text-xl mb-4">Authorized Signatory</h2>
           <p className="text-sm font-medium" data-testid="authorized-signatory">{po.authorized_signatory}</p>
         </div>
+      )}
+
+      {showReceiptModal && selectedItem && (
+        <ItemReceiptModal
+          item={selectedItem}
+          itemIndex={selectedItemIndex}
+          poId={id}
+          onClose={() => {
+            setShowReceiptModal(false);
+            setSelectedItem(null);
+            setSelectedItemIndex(null);
+          }}
+          onConfirm={confirmMaterialReceipt}
+        />
       )}
     </div>
   );
