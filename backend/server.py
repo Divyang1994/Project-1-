@@ -199,18 +199,39 @@ async def register(user_data: UserCreate):
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
     
+    # Validate department
+    valid_departments = ['admin', 'accounts', 'ppc', 'maintenance', 'dyeing', 'accessories']
+    if user_data.department.lower() not in valid_departments:
+        raise HTTPException(status_code=400, detail="Invalid department")
+    
+    # Validate role
+    valid_roles = ['admin', 'user']
+    if user_data.role.lower() not in valid_roles:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    
     user_id = str(uuid.uuid4())
     user_doc = {
         'id': user_id,
         'username': user_data.username,
         'password': hash_password(user_data.password),
         'full_name': user_data.full_name,
+        'role': user_data.role.lower(),
+        'department': user_data.department.lower(),
         'created_at': datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(user_doc)
     
     token = create_token(user_id)
-    return {'token': token, 'user': {'id': user_id, 'username': user_data.username, 'full_name': user_data.full_name}}
+    return {
+        'token': token, 
+        'user': {
+            'id': user_id, 
+            'username': user_data.username, 
+            'full_name': user_data.full_name,
+            'role': user_data.role.lower(),
+            'department': user_data.department.lower()
+        }
+    }
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
@@ -219,7 +240,16 @@ async def login(credentials: UserLogin):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     token = create_token(user['id'])
-    return {'token': token, 'user': {'id': user['id'], 'username': user['username'], 'full_name': user['full_name']}}
+    return {
+        'token': token, 
+        'user': {
+            'id': user['id'], 
+            'username': user['username'], 
+            'full_name': user['full_name'],
+            'role': user.get('role', 'user'),
+            'department': user.get('department', 'general')
+        }
+    }
 
 @api_router.get("/auth/me", response_model=User)
 async def get_me(current_user: dict = Depends(get_current_user)):
