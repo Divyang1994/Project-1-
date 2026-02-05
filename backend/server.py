@@ -136,7 +136,19 @@ class PurchaseOrder(BaseModel):
     tax: float
     total: float
     status: str
+    material_received: bool = False
+    material_received_date: Optional[str] = None
     created_by: str
+    created_at: datetime
+
+class Notification(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    po_id: str
+    po_number: str
+    message: str
+    notification_type: str
+    is_read: bool
     created_at: datetime
 
 # Auth functions
