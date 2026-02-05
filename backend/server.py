@@ -372,21 +372,66 @@ async def delete_purchase_order(po_id: str, current_user: dict = Depends(get_cur
         raise HTTPException(status_code=404, detail="Purchase order not found")
     return {'message': 'Purchase order deleted'}
 
-# Material Receipt Confirmation
-@api_router.post("/purchase-orders/{po_id}/confirm-receipt")
-async def confirm_material_receipt(po_id: str, current_user: dict = Depends(get_current_user)):
+# Material Receipt Confirmation (Per Item)
+class ItemReceiptConfirm(BaseModel):
+    item_index: int
+    quantity_received: float
+    received_by: str
+    notes: Optional[str] = ""
+
+@api_router.post("/purchase-orders/{po_id}/confirm-item-receipt")
+async def confirm_item_receipt(po_id: str, receipt_data: ItemReceiptConfirm, current_user: dict = Depends(get_current_user)):
+    po = await db.purchase_orders.find_one({'id': po_id}, {'_id': 0})
+    if not po:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+    
+    items = po['items']
+    if receipt_data.item_index >= len(items):
+        raise HTTPException(status_code=400, detail="Invalid item index")
+    
+    item = items[receipt_data.item_index]
+    
+    # Check if trying to receive more than ordered
+    new_total_received = item.get('quantity_received', 0) + receipt_data.quantity_received
+    if new_total_received > item['quantity']:
+        raise HTTPException(status_code=400, detail=f"Cannot receive more than ordered quantity. Ordered: {item['quantity']}, Already received: {item.get('quantity_received', 0)}")
+    
+    # Add delivery record
+    delivery_record = {
+        'delivery_date': datetime.now(timezone.utc).isoformat(),
+        'quantity_received': receipt_data.quantity_received,
+        'received_by': receipt_data.received_by,
+        'notes': receipt_data.notes
+    }
+    
+    if 'delivery_history' not in item:
+        item['delivery_history'] = []
+    item['delivery_history'].append(delivery_record)
+    
+    # Update quantity received
+    item['quantity_received'] = new_total_received
+    items[receipt_data.item_index] = item
+    
+    # Update the PO
     result = await db.purchase_orders.update_one(
         {'id': po_id},
-        {
-            '$set': {
-                'material_received': True,
-                'material_received_date': datetime.now(timezone.utc).isoformat()
-            }
-        }
+        {'$set': {'items': items}}
     )
+    
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Purchase order not found")
-    return {'message': 'Material receipt confirmed', 'received_date': datetime.now(timezone.utc).isoformat()}
+    
+    # Check if all items are fully received
+    all_received = all(item.get('quantity_received', 0) >= item['quantity'] for item in items)
+    
+    return {
+        'message': 'Item receipt confirmed',
+        'item_fully_received': new_total_received >= item['quantity'],
+        'po_fully_received': all_received,
+        'quantity_received': receipt_data.quantity_received,
+        'total_received': new_total_received,
+        'pending': item['quantity'] - new_total_received
+    }
 
 # Notification endpoints
 @api_router.get("/notifications")
