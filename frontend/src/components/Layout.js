@@ -1,8 +1,33 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { FileText, Package, Users, LayoutDashboard, LogOut } from "lucide-react";
+import { FileText, Package, Users, LayoutDashboard, LogOut, Bell } from "lucide-react";
+import { useState, useEffect } from "react";
+import axios from "axios";
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 export const Layout = ({ user, onLogout }) => {
   const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  useEffect(() => {
+    fetchUnreadCount();
+    // Poll for unread count every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/notifications/unread-count`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUnreadCount(response.data.unread_count);
+    } catch (err) {
+      console.error("Failed to fetch unread count:", err);
+    }
+  };
   
   const isActive = (path) => {
     if (path === "/" && location.pathname === "/") return true;
@@ -15,6 +40,7 @@ export const Layout = ({ user, onLogout }) => {
     { path: "/purchase-orders", label: "Purchase Orders", icon: FileText },
     { path: "/vendors", label: "Vendors", icon: Users },
     { path: "/products", label: "Products", icon: Package },
+    { path: "/notifications", label: "Notifications", icon: Bell, badge: unreadCount },
   ];
 
   return (
@@ -35,7 +61,7 @@ export const Layout = ({ user, onLogout }) => {
                   <Link
                     to={item.path}
                     data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-sm transition-colors ${
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-sm transition-colors relative ${
                       active
                         ? "bg-primary text-primary-foreground border-l-4 border-primary"
                         : "text-foreground hover:bg-muted"
@@ -43,6 +69,11 @@ export const Layout = ({ user, onLogout }) => {
                   >
                     <Icon size={18} />
                     <span className="text-sm font-medium">{item.label}</span>
+                    {item.badge > 0 && (
+                      <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-destructive text-destructive-foreground rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
                 </li>
               );
