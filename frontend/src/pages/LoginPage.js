@@ -9,7 +9,9 @@ export default function LoginPage({ onLogin }) {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
-    full_name: ""
+    full_name: "",
+    role: "user",
+    department: ""
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,22 +64,64 @@ export default function LoginPage({ onLogin }) {
 
           <form onSubmit={handleSubmit} className="space-y-6" data-testid="auth-form">
             {isRegister && (
-              <div>
-                <label htmlFor="full_name" className="block text-sm font-medium mb-2">
-                  Full Name
-                </label>
-                <input
-                  id="full_name"
-                  name="full_name"
-                  type="text"
-                  required={isRegister}
-                  value={formData.full_name}
-                  onChange={handleChange}
-                  data-testid="full-name-input"
-                  className="w-full px-4 py-2.5 bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="Enter your full name"
-                />
-              </div>
+              <>
+                <div>
+                  <label htmlFor="full_name" className="block text-sm font-medium mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    id="full_name"
+                    name="full_name"
+                    type="text"
+                    required={isRegister}
+                    value={formData.full_name}
+                    onChange={handleChange}
+                    data-testid="full-name-input"
+                    className="w-full px-4 py-2.5 bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="department" className="block text-sm font-medium mb-2">
+                    Department
+                  </label>
+                  <select
+                    id="department"
+                    name="department"
+                    required={isRegister}
+                    value={formData.department}
+                    onChange={handleChange}
+                    data-testid="department-select"
+                    className="w-full px-4 py-2.5 bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Department</option>
+                    <option value="admin">Admin (Full Access)</option>
+                    <option value="accounts">Accounts Department</option>
+                    <option value="ppc">PPC Department</option>
+                    <option value="maintenance">Maintenance Department</option>
+                    <option value="dyeing">Dyeing Department</option>
+                    <option value="accessories">Accessories Department</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label htmlFor="role" className="block text-sm font-medium mb-2">
+                    Role
+                  </label>
+                  <select
+                    id="role"
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    data-testid="role-select"
+                    className="w-full px-4 py-2.5 bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              </>
             )}
 
             <div>
