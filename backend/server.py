@@ -413,22 +413,24 @@ async def generate_po_pdf(po_id: str, current_user: dict = Depends(get_current_u
     story.append(Paragraph("Line Items", heading_style))
     story.append(Spacer(1, 0.1*inch))
     
-    items_data = [['#', 'Product', 'Quantity', 'Unit Price', 'Total']]
+    items_data = [['#', 'Product', 'Qty', 'Unit Price', 'Tax Rate', 'Tax Amt', 'Total']]
     for idx, item in enumerate(po['items'], 1):
         items_data.append([
             str(idx),
             item['product_name'],
             str(item['quantity']),
-            f"${item['unit_price']:.2f}",
-            f"${item['total']:.2f}"
+            f"₹{item['unit_price']:.2f}",
+            f"{item['tax_rate']}%",
+            f"₹{item['tax_amount']:.2f}",
+            f"₹{item['total']:.2f}"
         ])
     
-    items_table = Table(items_data, colWidths=[0.5*inch, 3*inch, 1*inch, 1.25*inch, 1.25*inch])
+    items_table = Table(items_data, colWidths=[0.4*inch, 2.2*inch, 0.6*inch, 1*inch, 0.8*inch, 0.9*inch, 1*inch])
     items_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0047AB')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('GRID', (0, 0), (-1, -1), 1, colors.grey),
         ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
@@ -439,11 +441,11 @@ async def generate_po_pdf(po_id: str, current_user: dict = Depends(get_current_u
     
     # Totals
     totals_data = [
-        ['Subtotal:', f"${po['subtotal']:.2f}"],
-        ['Tax:', f"${po['tax']:.2f}"],
-        ['Total:', f"${po['total']:.2f}"]
+        ['Subtotal:', f"₹{po['subtotal']:.2f}"],
+        ['Tax:', f"₹{po['tax']:.2f}"],
+        ['Total:', f"₹{po['total']:.2f}"]
     ]
-    totals_table = Table(totals_data, colWidths=[5*inch, 1.5*inch])
+    totals_table = Table(totals_data, colWidths=[5.5*inch, 1*inch])
     totals_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
         ('FONTNAME', (0, 2), (-1, 2), 'Helvetica-Bold'),
@@ -460,6 +462,16 @@ async def generate_po_pdf(po_id: str, current_user: dict = Depends(get_current_u
         story.append(Paragraph("Notes", heading_style))
         story.append(Spacer(1, 0.1*inch))
         story.append(Paragraph(po['notes'], normal_style))
+    
+    # Authorized Signatory
+    if po.get('authorized_signatory'):
+        story.append(Spacer(1, 0.4*inch))
+        story.append(Paragraph("Authorized Signatory", heading_style))
+        story.append(Spacer(1, 0.1*inch))
+        story.append(Paragraph(po['authorized_signatory'], normal_style))
+        story.append(Spacer(1, 0.5*inch))
+        story.append(Paragraph("_________________________", normal_style))
+        story.append(Paragraph("Signature", ParagraphStyle('Small', parent=styles['Normal'], fontSize=8, textColor=colors.grey)))
     
     doc.build(story)
     buffer.seek(0)
