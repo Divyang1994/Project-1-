@@ -23,6 +23,7 @@ export default function CreatePurchaseOrder() {
     payment_terms: "Net 30",
     shipping_address: "",
     notes: "",
+    authorized_signatory: "",
     items: [],
     subtotal: 0,
     tax: 0,
@@ -56,6 +57,7 @@ export default function CreatePurchaseOrder() {
           payment_terms: po.payment_terms,
           shipping_address: po.shipping_address,
           notes: po.notes,
+          authorized_signatory: po.authorized_signatory || "",
           items: po.items,
           subtotal: po.subtotal,
           tax: po.tax,
@@ -87,7 +89,7 @@ export default function CreatePurchaseOrder() {
       ...formData,
       items: [
         ...formData.items,
-        { product_id: "", product_name: "", quantity: 1, unit_price: 0, total: 0 }
+        { product_id: "", product_name: "", quantity: 1, unit_price: 0, tax_rate: 18, tax_amount: 0, total: 0 }
       ]
     });
   };
@@ -104,20 +106,33 @@ export default function CreatePurchaseOrder() {
     if (field === "product_id") {
       const product = products.find(p => p.id === value);
       if (product) {
+        const itemSubtotal = product.unit_price * newItems[index].quantity;
+        const taxAmount = itemSubtotal * (product.tax_rate / 100);
         newItems[index] = {
           ...newItems[index],
           product_id: value,
           product_name: product.name,
           unit_price: product.unit_price,
-          total: product.unit_price * newItems[index].quantity
+          tax_rate: product.tax_rate,
+          tax_amount: taxAmount,
+          total: itemSubtotal + taxAmount
         };
       }
     } else if (field === "quantity") {
       newItems[index].quantity = parseFloat(value) || 0;
-      newItems[index].total = newItems[index].quantity * newItems[index].unit_price;
+      const itemSubtotal = newItems[index].quantity * newItems[index].unit_price;
+      newItems[index].tax_amount = itemSubtotal * (newItems[index].tax_rate / 100);
+      newItems[index].total = itemSubtotal + newItems[index].tax_amount;
     } else if (field === "unit_price") {
       newItems[index].unit_price = parseFloat(value) || 0;
-      newItems[index].total = newItems[index].quantity * newItems[index].unit_price;
+      const itemSubtotal = newItems[index].quantity * newItems[index].unit_price;
+      newItems[index].tax_amount = itemSubtotal * (newItems[index].tax_rate / 100);
+      newItems[index].total = itemSubtotal + newItems[index].tax_amount;
+    } else if (field === "tax_rate") {
+      newItems[index].tax_rate = parseFloat(value) || 0;
+      const itemSubtotal = newItems[index].quantity * newItems[index].unit_price;
+      newItems[index].tax_amount = itemSubtotal * (newItems[index].tax_rate / 100);
+      newItems[index].total = itemSubtotal + newItems[index].tax_amount;
     }
 
     setFormData({ ...formData, items: newItems });
@@ -125,8 +140,8 @@ export default function CreatePurchaseOrder() {
   };
 
   const calculateTotals = (items) => {
-    const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-    const tax = subtotal * 0.1;
+    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const tax = items.reduce((sum, item) => sum + item.tax_amount, 0);
     const total = subtotal + tax;
     setFormData(prev => ({ ...prev, subtotal, tax, total }));
   };
