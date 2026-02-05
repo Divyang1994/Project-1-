@@ -366,6 +366,86 @@ async def delete_purchase_order(po_id: str, current_user: dict = Depends(get_cur
         raise HTTPException(status_code=404, detail="Purchase order not found")
     return {'message': 'Purchase order deleted'}
 
+# Material Receipt Confirmation
+@api_router.post("/purchase-orders/{po_id}/confirm-receipt")
+async def confirm_material_receipt(po_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.purchase_orders.update_one(
+        {'id': po_id},
+        {
+            '$set': {
+                'material_received': True,
+                'material_received_date': datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+    return {'message': 'Material receipt confirmed', 'received_date': datetime.now(timezone.utc).isoformat()}
+
+# Notification endpoints
+@api_router.get("/notifications")
+async def get_notifications(current_user: dict = Depends(get_current_user)):
+    notifications = await db.notifications.find({}, {'_id': 0}).sort('created_at', -1).to_list(100)
+    for notification in notifications:
+        if isinstance(notification.get('created_at'), str):
+            notification['created_at'] = datetime.fromisoformat(notification['created_at'])
+    return notifications
+
+@api_router.patch("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.notifications.update_one(
+        {'id': notification_id},
+        {'$set': {'is_read': True}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return {'message': 'Notification marked as read'}
+
+@api_router.post("/notifications/check-pending-pos")
+async def check_pending_pos(current_user: dict = Depends(get_current_user)):
+    """Check for POs older than 10 days and create notifications"""
+    ten_days_ago = datetime.now(timezone.utc) - timedelta(days=10)
+    
+    # Find POs created more than 10 days ago that haven't been marked as material received
+    pos = await db.purchase_orders.find({
+        'material_received': {'$ne': True}
+    }, {'_id': 0}).to_list(1000)
+    
+    notifications_created = 0
+    for po in pos:
+        created_at = datetime.fromisoformat(po['created_at']) if isinstance(po['created_at'], str) else po['created_at']
+        
+        if created_at <= ten_days_ago:
+            # Check if notification already exists for this PO
+            existing = await db.notifications.find_one({
+                'po_id': po['id'],
+                'notification_type': 'material_pending'
+            })
+            
+            if not existing:
+                days_old = (datetime.now(timezone.utc) - created_at).days
+                notification_doc = {
+                    'id': str(uuid.uuid4()),
+                    'po_id': po['id'],
+                    'po_number': po['po_number'],
+                    'message': f"Material receipt pending for {po['po_number']} ({days_old} days old). Please confirm material inhouse status.",
+                    'notification_type': 'material_pending',
+                    'is_read': False,
+                    'created_at': datetime.now(timezone.utc).isoformat()
+                }
+                await db.notifications.insert_one(notification_doc)
+                notifications_created += 1
+    
+    return {
+        'message': f'{notifications_created} new notifications created',
+        'notifications_created': notifications_created
+    }
+
+@api_router.get("/notifications/unread-count")
+async def get_unread_count(current_user: dict = Depends(get_current_user)):
+    count = await db.notifications.count_documents({'is_read': False})
+    return {'unread_count': count}
+
 # PDF Generation
 @api_router.get("/purchase-orders/{po_id}/pdf")
 async def generate_po_pdf(po_id: str, current_user: dict = Depends(get_current_user)):
