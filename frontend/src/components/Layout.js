@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { FileText, Package, Users, LayoutDashboard, LogOut, Bell } from "lucide-react";
+import { FileText, Package, Users, LayoutDashboard, LogOut, Bell, Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import axios from "axios";
 
@@ -9,6 +9,7 @@ const API = `${BACKEND_URL}/api`;
 export const Layout = ({ user, onLogout }) => {
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   useEffect(() => {
     fetchUnreadCount();
@@ -44,14 +45,32 @@ export const Layout = ({ user, onLogout }) => {
   ];
 
   return (
-    <div className="flex h-screen bg-background">
-      <aside className="w-64 bg-card border-r border-border flex flex-col">
-        <div className="p-6 border-b border-border">
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border px-4 py-3 flex items-center justify-between">
+        <h1 className="font-heading font-bold text-lg text-primary">PO Manager</h1>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 hover:bg-muted rounded-sm"
+          data-testid="mobile-menu-toggle"
+        >
+          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {/* Sidebar - Desktop always visible, Mobile slide-in */}
+      <aside className={`
+        w-64 bg-card border-r border-border flex flex-col
+        fixed lg:relative inset-y-0 left-0 z-40
+        transform transition-transform duration-300 ease-in-out
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        <div className="p-6 border-b border-border hidden lg:block">
           <h1 className="font-heading font-bold text-xl text-primary" data-testid="app-title">PO Manager</h1>
           <p className="text-xs text-muted-foreground mt-1">Factory Operations</p>
         </div>
         
-        <nav className="flex-1 p-4">
+        <nav className="flex-1 p-4 mt-16 lg:mt-0 overflow-y-auto">
           <ul className="space-y-2">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -60,6 +79,7 @@ export const Layout = ({ user, onLogout }) => {
                 <li key={item.path}>
                   <Link
                     to={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
                     data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
                     className={`flex items-center gap-3 px-4 py-2.5 rounded-sm transition-colors relative ${
                       active
@@ -111,7 +131,15 @@ export const Layout = ({ user, onLogout }) => {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      <main className="flex-1 overflow-y-auto pt-16 lg:pt-0">
         <Outlet />
       </main>
     </div>
