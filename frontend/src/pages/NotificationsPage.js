@@ -65,21 +65,9 @@ export default function NotificationsPage() {
   };
 
   const confirmMaterialReceipt = async (poId, notificationId) => {
-    if (!window.confirm('Confirm that materials have been received in-house?')) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API}/purchase-orders/${poId}/confirm-receipt`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      await markAsRead(notificationId);
-      alert('Material receipt confirmed successfully!');
-      navigate(`/purchase-orders/${poId}`);
-    } catch (err) {
-      console.error("Failed to confirm material receipt:", err);
-      alert("Failed to confirm material receipt");
-    }
+    // Navigate to PO detail page where they can confirm individual items
+    await markAsRead(notificationId);
+    navigate(`/purchase-orders/${poId}`);
   };
 
   if (loading) {
@@ -144,6 +132,31 @@ export default function NotificationsPage() {
                     )}
                   </div>
                   <p className="text-sm mb-3">{notification.message}</p>
+                  
+                  {notification.pending_items && notification.pending_items.length > 0 && (
+                    <div className="mb-3 p-3 bg-muted/30 rounded-sm">
+                      <p className="text-xs font-bold uppercase text-muted-foreground mb-2">Pending Items:</p>
+                      <div className="space-y-1">
+                        {notification.pending_items.slice(0, 5).map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-xs">
+                            <span>{item.product_name}</span>
+                            <span className="font-mono">
+                              <span className="text-green-600">{item.received}</span>
+                              <span className="text-muted-foreground"> / </span>
+                              <span>{item.ordered}</span>
+                              <span className="text-orange-600 ml-2">({item.pending} pending)</span>
+                            </span>
+                          </div>
+                        ))}
+                        {notification.pending_items.length > 5 && (
+                          <p className="text-xs text-muted-foreground italic">
+                            + {notification.pending_items.length - 5} more items
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
                   <p className="text-xs text-muted-foreground">
                     {new Date(notification.created_at).toLocaleString()}
                   </p>
@@ -163,7 +176,7 @@ export default function NotificationsPage() {
                     className="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-sm hover:bg-primary/90"
                   >
                     <Check size={16} />
-                    Confirm Receipt
+                    View & Confirm
                   </button>
                   {!notification.is_read && (
                     <button
@@ -185,9 +198,10 @@ export default function NotificationsPage() {
         <h3 className="font-heading font-semibold text-lg mb-3">Automatic Notification System</h3>
         <div className="space-y-2 text-sm text-muted-foreground">
           <p>• The system automatically checks for purchase orders older than 10 days</p>
-          <p>• Notifications are created for POs where materials haven't been confirmed as received</p>
-          <p>• Click "Check Pending POs" button to manually trigger the check</p>
-          <p>• Once you confirm material receipt, the notification will be marked as resolved</p>
+          <p>• Notifications show which specific SKUs/items are pending receipt</p>
+          <p>• Materials can be received partially and through multiple deliveries</p>
+          <p>• Each item tracks: Ordered quantity, Received quantity, Pending quantity</p>
+          <p>• Click "View & Confirm" to go to PO and confirm receipt for individual items</p>
           <p className="mt-4 text-xs italic">
             Tip: Set up a daily cron job to call the check-pending-pos endpoint automatically
           </p>
