@@ -110,8 +110,8 @@ class POItem(BaseModel):
     quantity: float
     quantity_received: float = 0.0
     unit_price: float
-    tax_rate: float
-    tax_amount: float
+    tax_rate: float = 0.0
+    tax_amount: float = 0.0
     total: float
     delivery_history: List[DeliveryRecord] = []
 
@@ -139,7 +139,7 @@ class PurchaseOrder(BaseModel):
     payment_terms: str
     shipping_address: str
     notes: str
-    authorized_signatory: str
+    authorized_signatory: str = ""
     subtotal: float
     tax: float
     total: float
