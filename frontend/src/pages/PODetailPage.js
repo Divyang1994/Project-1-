@@ -49,6 +49,24 @@ export default function PODetailPage() {
     }
   };
 
+  const confirmMaterialReceipt = async () => {
+    if (!window.confirm('Confirm that materials have been received in-house?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        `${API}/purchase-orders/${id}/confirm-receipt`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert('Material receipt confirmed successfully!');
+      fetchPO();
+    } catch (err) {
+      console.error("Failed to confirm material receipt:", err);
+      alert("Failed to confirm material receipt");
+    }
+  };
+
   const downloadPDF = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -206,7 +224,7 @@ export default function PODetailPage() {
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">
             Status Management
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-2 mb-4">
             {['draft', 'sent', 'received', 'cancelled'].map((status) => (
               <button
                 key={status}
@@ -222,6 +240,28 @@ export default function PODetailPage() {
                 Mark as {status.charAt(0).toUpperCase() + status.slice(1)}
               </button>
             ))}
+          </div>
+          
+          <div className="pt-4 border-t border-border">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+              Material Receipt
+            </h4>
+            {po.material_received ? (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-sm">
+                <p className="text-sm text-green-800 font-medium mb-1">✓ Material Received</p>
+                <p className="text-xs text-green-600">
+                  {new Date(po.material_received_date).toLocaleDateString()}
+                </p>
+              </div>
+            ) : (
+              <button
+                onClick={confirmMaterialReceipt}
+                data-testid="confirm-material-receipt-button"
+                className="w-full px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-sm hover:bg-green-700"
+              >
+                Confirm Material Receipt
+              </button>
+            )}
           </div>
         </div>
       </div>
