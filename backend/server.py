@@ -76,6 +76,7 @@ class ProductCreate(BaseModel):
     description: str
     unit_price: float
     unit_of_measure: str
+    tax_rate: float = 18.0
 
 class Product(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -85,6 +86,7 @@ class Product(BaseModel):
     description: str
     unit_price: float
     unit_of_measure: str
+    tax_rate: float
     created_at: datetime
 
 class POItemCreate(BaseModel):
@@ -92,6 +94,8 @@ class POItemCreate(BaseModel):
     product_name: str
     quantity: float
     unit_price: float
+    tax_rate: float
+    tax_amount: float
     total: float
 
 class POItem(BaseModel):
@@ -99,6 +103,8 @@ class POItem(BaseModel):
     product_name: str
     quantity: float
     unit_price: float
+    tax_rate: float
+    tax_amount: float
     total: float
 
 class PurchaseOrderCreate(BaseModel):
@@ -109,6 +115,7 @@ class PurchaseOrderCreate(BaseModel):
     payment_terms: str
     shipping_address: str
     notes: Optional[str] = ""
+    authorized_signatory: Optional[str] = ""
     subtotal: float
     tax: float
     total: float
@@ -124,6 +131,7 @@ class PurchaseOrder(BaseModel):
     payment_terms: str
     shipping_address: str
     notes: str
+    authorized_signatory: str
     subtotal: float
     tax: float
     total: float
