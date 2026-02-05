@@ -107,7 +107,12 @@ export const Layout = ({ user, onLogout }) => {
             <p className="text-sm font-bold text-primary capitalize">{user?.department || 'General'}</p>
             {user?.role === 'admin' && (
               <span className="inline-block mt-1 px-2 py-0.5 text-xs font-bold bg-primary/10 text-primary rounded-full">
-                Admin Access
+                Admin - Full Access
+              </span>
+            )}
+            {user?.department === 'accounts' && user?.role !== 'admin' && (
+              <span className="inline-block mt-1 px-2 py-0.5 text-xs font-bold bg-green-100 text-green-700 rounded-full">
+                All POs Access
               </span>
             )}
           </div>
