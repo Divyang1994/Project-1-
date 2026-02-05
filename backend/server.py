@@ -209,6 +209,15 @@ async def register(user_data: UserCreate):
     if user_data.role.lower() not in valid_roles:
         raise HTTPException(status_code=400, detail="Invalid role")
     
+    # RESTRICTION: Only ONE admin user allowed in the system
+    if user_data.role.lower() == 'admin':
+        existing_admin = await db.users.find_one({'role': 'admin'})
+        if existing_admin:
+            raise HTTPException(
+                status_code=403, 
+                detail="Admin user already exists. Only one admin profile is allowed in the system."
+            )
+    
     user_id = str(uuid.uuid4())
     user_doc = {
         'id': user_id,
