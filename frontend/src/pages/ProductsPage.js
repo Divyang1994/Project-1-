@@ -15,7 +15,8 @@ export default function ProductsPage() {
     sku: "",
     description: "",
     unit_price: "",
-    unit_of_measure: "pcs"
+    unit_of_measure: "pcs",
+    tax_rate: "18"
   });
 
   useEffect(() => {
@@ -44,7 +45,8 @@ export default function ProductsPage() {
 
       const payload = {
         ...formData,
-        unit_price: parseFloat(formData.unit_price)
+        unit_price: parseFloat(formData.unit_price),
+        tax_rate: parseFloat(formData.tax_rate)
       };
 
       if (editingProduct) {
@@ -84,7 +86,8 @@ export default function ProductsPage() {
         sku: product.sku,
         description: product.description,
         unit_price: product.unit_price.toString(),
-        unit_of_measure: product.unit_of_measure
+        unit_of_measure: product.unit_of_measure,
+        tax_rate: product.tax_rate.toString()
       });
     } else {
       setEditingProduct(null);
@@ -93,7 +96,8 @@ export default function ProductsPage() {
         sku: "",
         description: "",
         unit_price: "",
-        unit_of_measure: "pcs"
+        unit_of_measure: "pcs",
+        tax_rate: "18"
       });
     }
     setShowModal(true);
@@ -107,7 +111,8 @@ export default function ProductsPage() {
       sku: "",
       description: "",
       unit_price: "",
-      unit_of_measure: "pcs"
+      unit_of_measure: "pcs",
+      tax_rate: "18"
     });
   };
 
@@ -164,7 +169,10 @@ export default function ProductsPage() {
                     Description
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Unit Price
+                    Unit Price (₹)
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Tax Rate
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     UOM
@@ -186,7 +194,8 @@ export default function ProductsPage() {
                     <td className="px-6 py-4 text-sm text-muted-foreground max-w-xs truncate">
                       {product.description}
                     </td>
-                    <td className="px-6 py-4 font-mono text-sm">${product.unit_price.toFixed(2)}</td>
+                    <td className="px-6 py-4 font-mono text-sm">₹{product.unit_price.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-sm">{product.tax_rate}%</td>
                     <td className="px-6 py-4 text-sm uppercase">{product.unit_of_measure}</td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
@@ -257,7 +266,7 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Unit Price *</label>
+                  <label className="block text-sm font-medium mb-2">Unit Price (₹) *</label>
                   <input
                     type="number"
                     value={formData.unit_price}
@@ -269,6 +278,22 @@ export default function ProductsPage() {
                     className="w-full px-4 py-2.5 bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
                     placeholder="0.00"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Tax Rate (%) *</label>
+                  <select
+                    value={formData.tax_rate}
+                    onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value })}
+                    data-testid="product-tax-rate-select"
+                    required
+                    className="w-full px-4 py-2.5 bg-background border border-input rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="0">0% (Exempted)</option>
+                    <option value="5">5% (GST)</option>
+                    <option value="12">12% (GST)</option>
+                    <option value="18">18% (GST)</option>
+                    <option value="28">28% (GST)</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Unit of Measure *</label>
