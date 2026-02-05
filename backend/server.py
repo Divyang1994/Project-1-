@@ -398,7 +398,15 @@ async def generate_po_number(department: str):
 
 @api_router.get("/purchase-orders", response_model=List[PurchaseOrder])
 async def get_purchase_orders(current_user: dict = Depends(get_current_user)):
-    query = {} if current_user.get('role') == 'admin' else {'department': current_user.get('department', 'general')}
+    # Admin sees all POs, Accounts sees all POs, others see only their department
+    user_role = current_user.get('role')
+    user_dept = current_user.get('department', 'general')
+    
+    if user_role == 'admin' or user_dept == 'accounts':
+        query = {}  # See all POs
+    else:
+        query = {'department': user_dept}  # See only department POs
+    
     pos = await db.purchase_orders.find(query, {'_id': 0}).sort('created_at', -1).limit(500).to_list(500)
     for po in pos:
         if isinstance(po.get('created_at'), str):
@@ -413,8 +421,11 @@ async def get_purchase_order(po_id: str, current_user: dict = Depends(get_curren
     if not po:
         raise HTTPException(status_code=404, detail="Purchase order not found")
     
-    # Check access
-    if current_user.get('role') != 'admin' and po.get('department') != current_user.get('department'):
+    # Check access: admin and accounts can see all, others only their department
+    user_role = current_user.get('role')
+    user_dept = current_user.get('department')
+    
+    if user_role != 'admin' and user_dept != 'accounts' and po.get('department') != user_dept:
         raise HTTPException(status_code=403, detail="Access denied to this purchase order")
     
     if isinstance(po.get('created_at'), str):
@@ -448,7 +459,11 @@ async def update_purchase_order(po_id: str, po_data: PurchaseOrderCreate, curren
     if not existing:
         raise HTTPException(status_code=404, detail="Purchase order not found")
     
-    if current_user.get('role') != 'admin' and existing.get('department') != current_user.get('department'):
+    # Check access: admin and accounts can edit all, others only their department
+    user_role = current_user.get('role')
+    user_dept = current_user.get('department')
+    
+    if user_role != 'admin' and user_dept != 'accounts' and existing.get('department') != user_dept:
         raise HTTPException(status_code=403, detail="Access denied to this purchase order")
     
     result = await db.purchase_orders.update_one(
@@ -471,7 +486,11 @@ async def update_po_status(po_id: str, status: dict, current_user: dict = Depend
     if not existing:
         raise HTTPException(status_code=404, detail="Purchase order not found")
     
-    if current_user.get('role') != 'admin' and existing.get('department') != current_user.get('department'):
+    # Check access: admin and accounts can update status, others only their department
+    user_role = current_user.get('role')
+    user_dept = current_user.get('department')
+    
+    if user_role != 'admin' and user_dept != 'accounts' and existing.get('department') != user_dept:
         raise HTTPException(status_code=403, detail="Access denied to this purchase order")
     
     result = await db.purchase_orders.update_one(
