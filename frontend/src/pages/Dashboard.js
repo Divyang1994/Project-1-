@@ -167,7 +167,7 @@ export default function Dashboard() {
                       </Link>
                     </td>
                     <td className="px-6 py-4 text-sm">{po.vendor_name}</td>
-                    <td className="px-6 py-4 font-mono text-sm">${po.total.toFixed(2)}</td>
+                    <td className="px-6 py-4 font-mono text-sm">₹{po.total.toFixed(2)}</td>
                     <td className="px-6 py-4">{getStatusBadge(po.status)}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {new Date(po.created_at).toLocaleDateString()}
