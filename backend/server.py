@@ -467,6 +467,13 @@ async def update_purchase_order(po_id: str, po_data: PurchaseOrderCreate, curren
 
 @api_router.patch("/purchase-orders/{po_id}/status")
 async def update_po_status(po_id: str, status: dict, current_user: dict = Depends(get_current_user)):
+    existing = await db.purchase_orders.find_one({'id': po_id}, {'_id': 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+    
+    if current_user.get('role') != 'admin' and existing.get('department') != current_user.get('department'):
+        raise HTTPException(status_code=403, detail="Access denied to this purchase order")
+    
     result = await db.purchase_orders.update_one(
         {'id': po_id},
         {'$set': {'status': status['status']}}
@@ -477,6 +484,13 @@ async def update_po_status(po_id: str, status: dict, current_user: dict = Depend
 
 @api_router.delete("/purchase-orders/{po_id}")
 async def delete_purchase_order(po_id: str, current_user: dict = Depends(get_current_user)):
+    existing = await db.purchase_orders.find_one({'id': po_id}, {'_id': 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+    
+    if current_user.get('role') != 'admin' and existing.get('department') != current_user.get('department'):
+        raise HTTPException(status_code=403, detail="Access denied to this purchase order")
+    
     result = await db.purchase_orders.delete_one({'id': po_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Purchase order not found")
