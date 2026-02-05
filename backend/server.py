@@ -383,16 +383,28 @@ async def delete_product(product_id: str, current_user: dict = Depends(get_curre
     return {'message': 'Product deleted'}
 
 # Purchase Order endpoints
-async def generate_po_number():
-    count = await db.purchase_orders.count_documents({})
-    return f"PO-{datetime.now(timezone.utc).strftime('%Y%m')}-{count + 1:04d}"
+async def generate_po_number(department: str):
+    dept_prefix = {
+        'admin': 'ADM',
+        'accounts': 'ACC',
+        'ppc': 'PPC',
+        'maintenance': 'MNT',
+        'dyeing': 'DYE',
+        'accessories': 'ACS'
+    }.get(department.lower(), 'GEN')
+    
+    count = await db.purchase_orders.count_documents({'department': department})
+    return f"PO-{dept_prefix}-{datetime.now(timezone.utc).strftime('%Y%m')}-{count + 1:04d}"
 
 @api_router.get("/purchase-orders", response_model=List[PurchaseOrder])
 async def get_purchase_orders(current_user: dict = Depends(get_current_user)):
-    pos = await db.purchase_orders.find({}, {'_id': 0}).to_list(1000)
+    query = {} if current_user.get('role') == 'admin' else {'department': current_user.get('department', 'general')}
+    pos = await db.purchase_orders.find(query, {'_id': 0}).to_list(1000)
     for po in pos:
         if isinstance(po.get('created_at'), str):
             po['created_at'] = datetime.fromisoformat(po['created_at'])
+        if 'department' not in po:
+            po['department'] = 'general'
     return pos
 
 @api_router.get("/purchase-orders/{po_id}", response_model=PurchaseOrder)
@@ -400,20 +412,29 @@ async def get_purchase_order(po_id: str, current_user: dict = Depends(get_curren
     po = await db.purchase_orders.find_one({'id': po_id}, {'_id': 0})
     if not po:
         raise HTTPException(status_code=404, detail="Purchase order not found")
+    
+    # Check access
+    if current_user.get('role') != 'admin' and po.get('department') != current_user.get('department'):
+        raise HTTPException(status_code=403, detail="Access denied to this purchase order")
+    
     if isinstance(po.get('created_at'), str):
         po['created_at'] = datetime.fromisoformat(po['created_at'])
+    if 'department' not in po:
+        po['department'] = 'general'
     return po
 
 @api_router.post("/purchase-orders", response_model=PurchaseOrder)
 async def create_purchase_order(po_data: PurchaseOrderCreate, current_user: dict = Depends(get_current_user)):
     po_id = str(uuid.uuid4())
-    po_number = await generate_po_number()
+    department = current_user.get('department', 'general')
+    po_number = await generate_po_number(department)
     
     po_doc = {
         'id': po_id,
         'po_number': po_number,
         **po_data.model_dump(),
         'status': 'draft',
+        'department': department,
         'created_by': current_user['username'],
         'created_at': datetime.now(timezone.utc).isoformat()
     }
@@ -423,6 +444,13 @@ async def create_purchase_order(po_data: PurchaseOrderCreate, current_user: dict
 
 @api_router.put("/purchase-orders/{po_id}", response_model=PurchaseOrder)
 async def update_purchase_order(po_id: str, po_data: PurchaseOrderCreate, current_user: dict = Depends(get_current_user)):
+    existing = await db.purchase_orders.find_one({'id': po_id}, {'_id': 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+    
+    if current_user.get('role') != 'admin' and existing.get('department') != current_user.get('department'):
+        raise HTTPException(status_code=403, detail="Access denied to this purchase order")
+    
     result = await db.purchase_orders.update_one(
         {'id': po_id},
         {'$set': po_data.model_dump()}
@@ -433,6 +461,8 @@ async def update_purchase_order(po_id: str, po_data: PurchaseOrderCreate, curren
     po = await db.purchase_orders.find_one({'id': po_id}, {'_id': 0})
     if isinstance(po['created_at'], str):
         po['created_at'] = datetime.fromisoformat(po['created_at'])
+    if 'department' not in po:
+        po['department'] = 'general'
     return po
 
 @api_router.patch("/purchase-orders/{po_id}/status")
