@@ -454,38 +454,59 @@ async def mark_notification_read(notification_id: str, current_user: dict = Depe
 
 @api_router.post("/notifications/check-pending-pos")
 async def check_pending_pos(current_user: dict = Depends(get_current_user)):
-    """Check for POs older than 10 days and create notifications"""
+    """Check for POs older than 10 days and create notifications for pending items"""
     ten_days_ago = datetime.now(timezone.utc) - timedelta(days=10)
     
-    # Find POs created more than 10 days ago that haven't been marked as material received
-    pos = await db.purchase_orders.find({
-        'material_received': {'$ne': True}
-    }, {'_id': 0}).to_list(1000)
+    # Find all POs created more than 10 days ago
+    pos = await db.purchase_orders.find({}, {'_id': 0}).to_list(1000)
     
     notifications_created = 0
     for po in pos:
         created_at = datetime.fromisoformat(po['created_at']) if isinstance(po['created_at'], str) else po['created_at']
         
         if created_at <= ten_days_ago:
-            # Check if notification already exists for this PO
-            existing = await db.notifications.find_one({
-                'po_id': po['id'],
-                'notification_type': 'material_pending'
-            })
+            # Check which items have pending quantities
+            pending_items = []
+            for idx, item in enumerate(po['items']):
+                quantity_received = item.get('quantity_received', 0)
+                pending_qty = item['quantity'] - quantity_received
+                
+                if pending_qty > 0:
+                    pending_items.append({
+                        'index': idx,
+                        'product_name': item['product_name'],
+                        'ordered': item['quantity'],
+                        'received': quantity_received,
+                        'pending': pending_qty
+                    })
             
-            if not existing:
-                days_old = (datetime.now(timezone.utc) - created_at).days
-                notification_doc = {
-                    'id': str(uuid.uuid4()),
+            # Create notification if there are pending items
+            if pending_items:
+                # Check if notification already exists for this PO
+                existing = await db.notifications.find_one({
                     'po_id': po['id'],
-                    'po_number': po['po_number'],
-                    'message': f"Material receipt pending for {po['po_number']} ({days_old} days old). Please confirm material inhouse status.",
                     'notification_type': 'material_pending',
-                    'is_read': False,
-                    'created_at': datetime.now(timezone.utc).isoformat()
-                }
-                await db.notifications.insert_one(notification_doc)
-                notifications_created += 1
+                    'is_read': False
+                })
+                
+                if not existing:
+                    days_old = (datetime.now(timezone.utc) - created_at).days
+                    pending_items_summary = ', '.join([f"{item['product_name']} ({item['pending']} pending)" for item in pending_items[:3]])
+                    if len(pending_items) > 3:
+                        pending_items_summary += f" and {len(pending_items) - 3} more"
+                    
+                    notification_doc = {
+                        'id': str(uuid.uuid4()),
+                        'po_id': po['id'],
+                        'po_number': po['po_number'],
+                        'message': f"Material receipt pending for {po['po_number']} ({days_old} days old). Pending items: {pending_items_summary}",
+                        'notification_type': 'material_pending',
+                        'pending_items': pending_items,
+                        'is_read': False,
+                        'created_at': datetime.now(timezone.utc).isoformat()
+                    }
+                    await db.notifications.insert_one(notification_doc)
+                    notifications_created += 1
     
     return {
         'message': f'{notifications_created} new notifications created',
