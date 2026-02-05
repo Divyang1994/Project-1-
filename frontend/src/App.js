@@ -8,6 +8,7 @@ import CreatePurchaseOrder from "./pages/CreatePurchaseOrder";
 import VendorsPage from "./pages/VendorsPage";
 import ProductsPage from "./pages/ProductsPage";
 import PODetailPage from "./pages/PODetailPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import Layout from "./components/Layout";
 
 function App() {
@@ -61,6 +62,7 @@ function App() {
             <Route path="purchase-orders/:id/edit" element={<CreatePurchaseOrder />} />
             <Route path="vendors" element={<VendorsPage />} />
             <Route path="products" element={<ProductsPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
