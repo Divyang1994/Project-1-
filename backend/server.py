@@ -260,7 +260,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 async def get_vendors(current_user: dict = Depends(get_current_user)):
     # Admin can see all vendors, others see only their department
     query = {} if current_user.get('role') == 'admin' else {'department': current_user.get('department', 'general')}
-    vendors = await db.vendors.find(query, {'_id': 0}).to_list(1000)
+    vendors = await db.vendors.find(query, {'_id': 0}).limit(500).to_list(500)
     for vendor in vendors:
         if isinstance(vendor.get('created_at'), str):
             vendor['created_at'] = datetime.fromisoformat(vendor['created_at'])
@@ -324,7 +324,7 @@ async def delete_vendor(vendor_id: str, current_user: dict = Depends(get_current
 @api_router.get("/products", response_model=List[Product])
 async def get_products(current_user: dict = Depends(get_current_user)):
     query = {} if current_user.get('role') == 'admin' else {'department': current_user.get('department', 'general')}
-    products = await db.products.find(query, {'_id': 0}).to_list(1000)
+    products = await db.products.find(query, {'_id': 0}).limit(500).to_list(500)
     for product in products:
         if isinstance(product.get('created_at'), str):
             product['created_at'] = datetime.fromisoformat(product['created_at'])
@@ -399,7 +399,7 @@ async def generate_po_number(department: str):
 @api_router.get("/purchase-orders", response_model=List[PurchaseOrder])
 async def get_purchase_orders(current_user: dict = Depends(get_current_user)):
     query = {} if current_user.get('role') == 'admin' else {'department': current_user.get('department', 'general')}
-    pos = await db.purchase_orders.find(query, {'_id': 0}).to_list(1000)
+    pos = await db.purchase_orders.find(query, {'_id': 0}).sort('created_at', -1).limit(500).to_list(500)
     for po in pos:
         if isinstance(po.get('created_at'), str):
             po['created_at'] = datetime.fromisoformat(po['created_at'])
@@ -560,7 +560,7 @@ async def confirm_item_receipt(po_id: str, receipt_data: ItemReceiptConfirm, cur
 # Notification endpoints
 @api_router.get("/notifications")
 async def get_notifications(current_user: dict = Depends(get_current_user)):
-    notifications = await db.notifications.find({}, {'_id': 0}).sort('created_at', -1).to_list(100)
+    notifications = await db.notifications.find({}, {'_id': 0}).sort('created_at', -1).limit(100).to_list(100)
     for notification in notifications:
         if isinstance(notification.get('created_at'), str):
             notification['created_at'] = datetime.fromisoformat(notification['created_at'])
@@ -581,8 +581,8 @@ async def check_pending_pos(current_user: dict = Depends(get_current_user)):
     """Check for POs older than 10 days and create notifications for pending items"""
     ten_days_ago = datetime.now(timezone.utc) - timedelta(days=10)
     
-    # Find all POs created more than 10 days ago
-    pos = await db.purchase_orders.find({}, {'_id': 0}).to_list(1000)
+    # Find all POs created more than 10 days ago (limit to recent 500 for performance)
+    pos = await db.purchase_orders.find({}).sort('created_at', -1).limit(500).to_list(500)
     
     notifications_created = 0
     for po in pos:
